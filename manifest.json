@@ -1,0 +1,37 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "{{YOUR-APP-ID}}",
+  "developer": {
+    "name": "Your Name",
+    "websiteUrl": "https://example.com",
+    "privacyUrl": "https://example.com/privacy",
+    "termsOfUseUrl": "https://example.com/terms"
+  },
+  "name": {
+    "short": "Will bot",
+    "full": "Will bot - Mobile Poland - leads weekly sync"
+  },
+  "description": {
+    "short": "Spin the wheel to pick the next storyteller",
+    "full": "A fun spinning wheel app for the Mobile Poland leads weekly sync. Spin the wheel to randomly select who tells a fun or interesting story at the next meeting!"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#667eea",
+  "staticTabs": [
+    {
+      "entityId": "wheelOfNames",
+      "name": "Will bot",
+      "contentUrl": "https://{{YOUR-DOMAIN}}/index.html",
+      "scopes": ["personal"]
+    }
+  ],
+  "permissions": ["identity"],
+  "validDomains": [
+    "{{YOUR-DOMAIN}}"
+  ]
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Will bot - Mobile Poland</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Will bot</h1>
+      <p class="subtitle">Mobile Poland — leads weekly sync</p>
+    </header>
+
+    <div class="main-layout">
+      <div class="wheel-section">
+        <div class="wheel-container">
+          <div class="pointer"></div>
+          <canvas id="wheelCanvas" width="500" height="500"></canvas>
+        </div>
+        <button id="spinBtn" class="spin-btn">SPIN</button>
+      </div>
+
+      <div class="names-section">
+        <h2>Participants</h2>
+        <textarea id="namesInput" placeholder="Enter names, one per line&#10;e.g.&#10;Alice&#10;Bob&#10;Charlie"></textarea>
+        <div class="names-actions">
+          <button id="updateBtn" class="btn btn-primary">Update Wheel</button>
+          <button id="shuffleBtn" class="btn btn-secondary">Shuffle</button>
+          <button id="clearBtn" class="btn btn-danger">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="winnerOverlay" class="winner-overlay hidden">
+      <div class="winner-card">
+        <div class="confetti-container" id="confetti"></div>
+        <p class="winner-emoji">📖</p>
+        <p class="winner-label">Next meeting's Storyteller</p>
+        <h2 class="winner-name" id="winnerName"></h2>
+        <p class="winner-desc">Get ready to share a fun or interesting story!</p>
+        <button id="closeWinner" class="btn btn-primary">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://res.cdn.office.net/teams-js/2.21.0/js/MicrosoftTeams.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
