@@ -7,6 +7,7 @@
 
   var teamsContext = null;
   var isInTeams = false;
+  var accessToken = null; // stored after successful auth
 
   // --- State ---
   var names = [];
@@ -36,6 +37,7 @@
   var confettiContainer = document.getElementById('confetti');
   var loadChatBtn = document.getElementById('loadChatBtn');
   var loadStatus = document.getElementById('loadStatus');
+  var postToChatCheckbox = document.getElementById('postToChat');
 
   // --- Teams SDK init ---
   function initTeams() {
@@ -108,6 +110,7 @@
     }
 
     getAccessToken().then(function (token) {
+      accessToken = token; // store for later use (e.g. posting to chat)
       loadStatus.textContent = 'Loading members...';
 
       return fetch('https://graph.microsoft.com/v1.0/chats/' + chatId + '/members', {
@@ -280,6 +283,41 @@
     requestAnimationFrame(animate);
   }
 
+  // --- Post message to chat ---
+  function postMessageToChat(winnerName) {
+    if (!accessToken || !teamsContext || !teamsContext.chat || !teamsContext.chat.id) {
+      console.log('Skipping chat post: no token or chat context');
+      return;
+    }
+
+    if (!postToChatCheckbox || !postToChatCheckbox.checked) {
+      return;
+    }
+
+    var chatId = teamsContext.chat.id;
+    var messageBody = {
+      body: {
+        contentType: 'html',
+        content: '<b>📖 Next meeting\'s Storyteller: ' + winnerName + '</b><br><i>Get ready to share a fun or interesting story!</i>'
+      }
+    };
+
+    fetch('https://graph.microsoft.com/v1.0/chats/' + chatId + '/messages', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + accessToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(messageBody)
+    }).then(function (response) {
+      if (!response.ok) {
+        console.error('Failed to post message:', response.status);
+      }
+    }).catch(function (err) {
+      console.error('Error posting message to chat:', err);
+    });
+  }
+
   function announceWinner() {
     // The pointer is at the top, which is -PI/2 in canvas coordinates.
     // Segment i is drawn from (currentAngle + i * sliceAngle) to (currentAngle + (i+1) * sliceAngle).
@@ -289,10 +327,14 @@
     var pointerAngle = ((-Math.PI / 2 - currentAngle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
 
     var winnerIndex = Math.floor(pointerAngle / sliceAngle) % names.length;
+    var winnerName = names[winnerIndex];
 
-    winnerNameEl.textContent = names[winnerIndex];
+    winnerNameEl.textContent = winnerName;
     winnerOverlay.classList.remove('hidden');
     spawnConfetti();
+
+    // Post result to chat
+    postMessageToChat(winnerName);
   }
 
   // --- Confetti ---

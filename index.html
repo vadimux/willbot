@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Will bot - Mobile Poland</title>
-  <link rel="stylesheet" href="css/style.css?v=1.4.0">
+  <link rel="stylesheet" href="css/style.css?v=1.7.0">
 </head>
 <body>
   <div class="app">
@@ -26,6 +26,10 @@
         <h2>Participants</h2>
         <button id="loadChatBtn" class="btn btn-load">Load from Chat</button>
         <p id="loadStatus" class="load-status"></p>
+        <label class="checkbox-label">
+          <input type="checkbox" id="postToChat" checked>
+          Post storyteller to chat
+        </label>
         <textarea id="namesInput" placeholder="Enter names, one per line&#10;e.g.&#10;Alice&#10;Bob&#10;Charlie"></textarea>
         <div class="names-actions">
           <button id="updateBtn" class="btn btn-primary">Update Wheel</button>
@@ -48,6 +52,6 @@
   </div>
 
   <script src="https://res.cdn.office.net/teams-js/2.21.0/js/MicrosoftTeams.min.js"></script>
-  <script src="js/app.js?v=1.4.0"></script>
+  <script src="js/app.js?v=1.7.0"></script>
 </body>
 </html>
