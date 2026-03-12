@@ -1,14 +1,12 @@
 (function () {
   'use strict';
 
-  // --- Azure AD / MSAL Config ---
+  // --- Config ---
   var CLIENT_ID = 'b41bc6ad-2fef-41bc-abea-196732e74ed1';
   var TENANT_ID = 'b41b72d0-4e9f-4c26-8a69-f949f367c91d';
-  var AUTHORITY = 'https://login.microsoftonline.com/' + TENANT_ID;
-  var GRAPH_SCOPES = ['ChatMember.Read.Chat', 'Chat.Read'];
 
-  var msalInstance = null;
   var teamsContext = null;
+  var isInTeams = false;
 
   // --- State ---
   var names = [];
@@ -39,32 +37,12 @@
   var loadChatBtn = document.getElementById('loadChatBtn');
   var loadStatus = document.getElementById('loadStatus');
 
-  // --- MSAL Init ---
-  function initMsal() {
-    try {
-      if (window.msal) {
-        msalInstance = new msal.PublicClientApplication({
-          auth: {
-            clientId: CLIENT_ID,
-            authority: AUTHORITY,
-            redirectUri: window.location.origin + window.location.pathname
-          },
-          cache: {
-            cacheLocation: 'sessionStorage',
-            storeAuthStateInCookie: true
-          }
-        });
-      }
-    } catch (e) {
-      console.log('MSAL init failed:', e);
-    }
-  }
-
   // --- Teams SDK init ---
   function initTeams() {
     try {
       if (window.microsoftTeams) {
         microsoftTeams.app.initialize().then(function () {
+          isInTeams = true;
           microsoftTeams.app.getContext().then(function (context) {
             teamsContext = context;
 
@@ -86,63 +64,32 @@
               microsoftTeams.pages.config.setValidityState(true);
             }
           });
+        }).catch(function () {
+          isInTeams = false;
         });
       }
     } catch (e) {
       // Running outside Teams — that's fine
+      isInTeams = false;
     }
   }
 
-  // --- Graph API: Fetch chat members ---
+  // --- Auth: Get access token via Teams popup ---
   function getAccessToken() {
-    if (!msalInstance) {
-      return Promise.reject(new Error('MSAL not initialized'));
+    if (!isInTeams) {
+      return Promise.reject(new Error('Not running inside Teams. Open this app as a tab in Teams.'));
     }
 
-    var accounts = msalInstance.getAllAccounts();
-    var request = {
-      scopes: GRAPH_SCOPES,
-      account: accounts[0] || undefined
-    };
-
-    if (accounts.length > 0) {
-      // Try silent token acquisition first
-      return msalInstance.acquireTokenSilent(request).then(function (response) {
-        return response.accessToken;
-      }).catch(function () {
-        // Silent failed, try popup
-        return acquireTokenWithPopup(request);
-      });
-    } else {
-      // No cached account, use popup
-      return acquireTokenWithPopup(request);
-    }
-  }
-
-  function acquireTokenWithPopup(request) {
-    // In Teams, use Teams auth popup; outside Teams, use MSAL popup
-    if (window.microsoftTeams && teamsContext) {
-      return new Promise(function (resolve, reject) {
-        microsoftTeams.authentication.authenticate({
-          url: window.location.origin + window.location.pathname + '?auth=start',
-          width: 600,
-          height: 535
-        }).then(function (token) {
-          resolve(token);
-        }).catch(function (err) {
-          // Fallback to MSAL popup
-          msalInstance.acquireTokenPopup(request).then(function (response) {
-            resolve(response.accessToken);
-          }).catch(reject);
-        });
-      });
-    }
-
-    return msalInstance.acquireTokenPopup(request).then(function (response) {
-      return response.accessToken;
+    // Use Teams authentication popup — opens auth.html in a popup window
+    // auth.html uses MSAL (outside iframe, so no CSP issues) and returns the token
+    return microsoftTeams.authentication.authenticate({
+      url: window.location.origin + '/willbot/auth.html',
+      width: 600,
+      height: 600
     });
   }
 
+  // --- Graph API: Fetch chat members ---
   function fetchChatMembers() {
     loadChatBtn.disabled = true;
     loadStatus.textContent = 'Authenticating...';
@@ -153,15 +100,14 @@
       chatId = teamsContext.chat.id;
     }
 
-    getAccessToken().then(function (token) {
-      if (!chatId) {
-        // No chat context — try to get user's recent chats or show message
-        loadStatus.textContent = 'No chat context. Open in a group chat tab.';
-        loadStatus.className = 'load-status error';
-        loadChatBtn.disabled = false;
-        return;
-      }
+    if (!chatId) {
+      loadStatus.textContent = 'No chat context. Open this as a tab in a group chat.';
+      loadStatus.className = 'load-status error';
+      loadChatBtn.disabled = false;
+      return;
+    }
 
+    getAccessToken().then(function (token) {
       loadStatus.textContent = 'Loading members...';
 
       return fetch('https://graph.microsoft.com/v1.0/chats/' + chatId + '/members', {
@@ -192,29 +138,11 @@
       });
     }).catch(function (err) {
       console.error('Failed to load chat members:', err);
-      loadStatus.textContent = 'Failed: ' + (err.message || 'Auth error');
+      loadStatus.textContent = 'Failed: ' + (err.message || err || 'Auth error');
       loadStatus.className = 'load-status error';
     }).finally(function () {
       loadChatBtn.disabled = false;
     });
-  }
-
-  // --- Handle auth redirect (for popup flow) ---
-  function handleAuthRedirect() {
-    var params = new URLSearchParams(window.location.search);
-    if (params.get('auth') === 'start' && msalInstance) {
-      msalInstance.loginPopup({ scopes: GRAPH_SCOPES }).then(function (response) {
-        if (window.microsoftTeams) {
-          microsoftTeams.authentication.notifySuccess(response.accessToken);
-        }
-      }).catch(function (err) {
-        if (window.microsoftTeams) {
-          microsoftTeams.authentication.notifyFailure(err.message);
-        }
-      });
-      return true; // This is the auth popup page
-    }
-    return false;
   }
 
   // --- Wheel Drawing ---
@@ -431,11 +359,6 @@
   });
 
   // --- Init ---
-  initMsal();
-
-  // Check if this is an auth popup redirect
-  if (!handleAuthRedirect()) {
-    initTeams();
-    drawWheel();
-  }
+  initTeams();
+  drawWheel();
 })();
