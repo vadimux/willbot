@@ -12,11 +12,17 @@
       var CLIENT_ID = 'b41bc6ad-2fef-41bc-abea-196732e74ed1';
       var TENANT_ID = 'b41b72d0-4e9f-4c26-8a69-f949f367c91d';
       var REDIRECT_URI = 'https://vadimux.github.io/willbot/auth.html';
-      var SCOPES = 'ChatMember.Read Chat.Read Chat.ReadWrite';
 
-      // Check if silent mode was requested (no user interaction)
+      // Parse query params first
       var searchParams = new URLSearchParams(window.location.search);
       var isSilent = searchParams.get('silent') === 'true';
+      var isFull = searchParams.get('full') === 'true';
+
+      // Full mode = load members + post (needs ChatMember.Read which requires admin)
+      // Default mode = post only (Chat.ReadWrite — no admin needed)
+      var SCOPES = isFull
+        ? 'ChatMember.Read Chat.Read Chat.ReadWrite'
+        : 'Chat.ReadWrite';
 
       // Check if we have a token in the URL hash (returning from login)
       var hash = window.location.hash.substring(1);

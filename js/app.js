@@ -81,15 +81,17 @@
   }
 
   // --- Auth: Get access token via Teams popup ---
-  function getAccessToken(silent) {
+  // mode: 'silent' = no popup, 'post' = Chat.ReadWrite only, 'full' = all scopes including ChatMember.Read
+  function getAccessToken(mode) {
     if (!isInTeams) {
       return Promise.reject(new Error('Not running inside Teams.'));
     }
 
     var authUrl = window.location.origin + '/willbot/auth.html';
-    if (silent) {
-      authUrl += '?silent=true';
-    }
+    var params = [];
+    if (mode === 'silent') params.push('silent=true');
+    if (mode === 'full') params.push('full=true');
+    if (params.length > 0) authUrl += '?' + params.join('&');
 
     return microsoftTeams.authentication.authenticate({
       url: authUrl,
@@ -101,12 +103,12 @@
   // Try silent auth on tab load (no popup visible to user)
   function trySilentAuth() {
     if (!isInTeams) return;
-    getAccessToken(true).then(function (token) {
+    getAccessToken('silent').then(function (token) {
       accessToken = token;
-      loadStatus.textContent = 'Connected to chat';
+      loadStatus.textContent = 'Ready to post';
       loadStatus.className = 'load-status success';
     }).catch(function () {
-      // Silent auth failed — user will need to click Load from Chat
+      // Silent auth failed — will consent on first spin
     });
   }
 
@@ -128,7 +130,7 @@
       return;
     }
 
-    getAccessToken().then(function (token) {
+    getAccessToken('full').then(function (token) {
       accessToken = token; // store for later use (e.g. posting to chat)
       loadStatus.textContent = 'Loading members...';
 
@@ -362,14 +364,20 @@
     if (accessToken) {
       sendMessage(accessToken);
     } else {
-      // Try silent auth first (no popup)
+      // Try silent first, then consent popup (Chat.ReadWrite only — no admin needed)
       setPostStatus('Connecting...', 'posting');
-      getAccessToken(true).then(function (token) {
+      getAccessToken('silent').then(function (token) {
         accessToken = token;
         sendMessage(token);
       }).catch(function () {
-        // Silent failed — need user to click "Load from Chat" first
-        setPostStatus('Click "Load from Chat" first to enable posting', 'post-error');
+        // Silent failed — try with consent popup (one-time, no admin needed)
+        setPostStatus('Please consent to post...', 'posting');
+        getAccessToken('post').then(function (token) {
+          accessToken = token;
+          sendMessage(token);
+        }).catch(function (err) {
+          setPostStatus('Auth cancelled — uncheck "Post to chat" or try again', 'post-error');
+        });
       });
     }
   }
