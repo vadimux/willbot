@@ -293,8 +293,27 @@ header h1 {
 .winner-desc {
   font-size: 1rem;
   color: #8888aa;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   font-style: italic;
+}
+
+.post-status {
+  font-size: 0.8rem;
+  color: #8888aa;
+  margin-bottom: 16px;
+  min-height: 1.2em;
+}
+
+.post-status.posting {
+  color: #fee140;
+}
+
+.post-status.posted {
+  color: #43e97b;
+}
+
+.post-status.post-error {
+  color: #f5576c;
 }
 
 .winner-card .btn {

@@ -38,6 +38,7 @@
   var loadChatBtn = document.getElementById('loadChatBtn');
   var loadStatus = document.getElementById('loadStatus');
   var postToChatCheckbox = document.getElementById('postToChat');
+  var postStatus = document.getElementById('postStatus');
 
   // --- Teams SDK init ---
   function initTeams() {
@@ -284,19 +285,35 @@
   }
 
   // --- Post message to chat ---
+  function setPostStatus(text, className) {
+    if (postStatus) {
+      postStatus.textContent = text;
+      postStatus.className = 'post-status' + (className ? ' ' + className : '');
+    }
+  }
+
   function postMessageToChat(winnerName) {
+    setPostStatus('', '');
+
     if (!postToChatCheckbox || !postToChatCheckbox.checked) {
       return;
     }
 
-    if (!isInTeams || !teamsContext || !teamsContext.chat || !teamsContext.chat.id) {
-      console.log('Skipping chat post: not in Teams or no chat context');
+    if (!isInTeams) {
+      setPostStatus('Not in Teams — message not posted', 'post-error');
+      return;
+    }
+
+    if (!teamsContext || !teamsContext.chat || !teamsContext.chat.id) {
+      setPostStatus('No chat context — open as tab in a group chat', 'post-error');
       return;
     }
 
     var chatId = teamsContext.chat.id;
 
     function sendMessage(token) {
+      setPostStatus('Posting to chat...', 'posting');
+
       var messageBody = {
         body: {
           contentType: 'html',
@@ -313,22 +330,26 @@
         body: JSON.stringify(messageBody)
       }).then(function (response) {
         if (!response.ok) {
-          console.error('Failed to post message:', response.status);
+          return response.json().then(function (err) {
+            var msg = (err && err.error && err.error.message) || ('Error ' + response.status);
+            setPostStatus('Post failed: ' + msg, 'post-error');
+          });
         }
+        setPostStatus('Posted to chat!', 'posted');
       }).catch(function (err) {
-        console.error('Error posting message to chat:', err);
+        setPostStatus('Post failed: ' + (err.message || err), 'post-error');
       });
     }
 
     if (accessToken) {
       sendMessage(accessToken);
     } else {
-      // No token yet — authenticate first, then post
+      setPostStatus('Authenticating...', 'posting');
       getAccessToken().then(function (token) {
         accessToken = token;
         sendMessage(token);
       }).catch(function (err) {
-        console.error('Auth failed for chat post:', err);
+        setPostStatus('Auth failed: ' + (err.message || err), 'post-error');
       });
     }
   }
