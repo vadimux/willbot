@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "id": "127a193b-19ae-4f43-acef-ea8734d4543d",
   "developer": {
     "name": "Your Name",
@@ -28,6 +28,13 @@
       "name": "Will bot",
       "contentUrl": "https://vadimux.github.io/willbot/index.html",
       "scopes": ["personal"]
+    }
+  ],
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://vadimux.github.io/willbot/index.html",
+      "canUpdateConfiguration": false,
+      "scopes": ["team", "groupChat"]
     }
   ],
   "permissions": ["identity"],
