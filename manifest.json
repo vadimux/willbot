@@ -1,10 +1,10 @@
 {
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "id": "127a193b-19ae-4f43-acef-ea8734d4543d",
   "developer": {
-    "name": "Your Name",
+    "name": "Vadzim Mikalayeu",
     "websiteUrl": "https://example.com",
     "privacyUrl": "https://example.com/privacy",
     "termsOfUseUrl": "https://example.com/terms"

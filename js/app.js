@@ -37,6 +37,20 @@
             if (context.app.theme === 'dark') {
               document.body.classList.add('theme-dark');
             }
+
+            // If loaded as a configurable tab config page, enable the Save button
+            if (context.page.frameContext === 'settings') {
+              microsoftTeams.pages.config.registerOnSaveHandler(function (saveEvent) {
+                microsoftTeams.pages.config.setConfig({
+                  suggestedDisplayName: 'Will bot',
+                  entityId: 'wheelOfNames',
+                  contentUrl: window.location.origin + window.location.pathname,
+                  websiteUrl: window.location.origin + window.location.pathname
+                });
+                saveEvent.notifySuccess();
+              });
+              microsoftTeams.pages.config.setValidityState(true);
+            }
           });
         });
       }
