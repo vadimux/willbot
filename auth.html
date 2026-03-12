@@ -14,6 +14,10 @@
       var REDIRECT_URI = 'https://vadimux.github.io/willbot/auth.html';
       var SCOPES = 'ChatMember.Read Chat.Read Chat.ReadWrite';
 
+      // Check if silent mode was requested (no user interaction)
+      var searchParams = new URLSearchParams(window.location.search);
+      var isSilent = searchParams.get('silent') === 'true';
+
       // Check if we have a token in the URL hash (returning from login)
       var hash = window.location.hash.substring(1);
       var params = new URLSearchParams(hash);
@@ -41,7 +45,7 @@
           '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
           '&scope=' + encodeURIComponent(SCOPES) +
           '&response_mode=fragment' +
-          '&prompt=consent';
+          '&prompt=' + (isSilent ? 'none' : 'consent');
 
         window.location.href = authUrl;
       }

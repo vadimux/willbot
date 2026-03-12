@@ -54,6 +54,9 @@
             }
 
             // If loaded as a configurable tab config page, enable the Save button
+            // Try silent auth on load
+            trySilentAuth();
+
             if (context.page.frameContext === 'settings') {
               microsoftTeams.pages.config.registerOnSaveHandler(function (saveEvent) {
                 microsoftTeams.pages.config.setConfig({
@@ -78,17 +81,32 @@
   }
 
   // --- Auth: Get access token via Teams popup ---
-  function getAccessToken() {
+  function getAccessToken(silent) {
     if (!isInTeams) {
-      return Promise.reject(new Error('Not running inside Teams. Open this app as a tab in Teams.'));
+      return Promise.reject(new Error('Not running inside Teams.'));
     }
 
-    // Use Teams authentication popup — opens auth.html in a popup window
-    // auth.html uses MSAL (outside iframe, so no CSP issues) and returns the token
+    var authUrl = window.location.origin + '/willbot/auth.html';
+    if (silent) {
+      authUrl += '?silent=true';
+    }
+
     return microsoftTeams.authentication.authenticate({
-      url: window.location.origin + '/willbot/auth.html',
+      url: authUrl,
       width: 600,
       height: 600
+    });
+  }
+
+  // Try silent auth on tab load (no popup visible to user)
+  function trySilentAuth() {
+    if (!isInTeams) return;
+    getAccessToken(true).then(function (token) {
+      accessToken = token;
+      loadStatus.textContent = 'Connected to chat';
+      loadStatus.className = 'load-status success';
+    }).catch(function () {
+      // Silent auth failed — user will need to click Load from Chat
     });
   }
 
@@ -344,12 +362,14 @@
     if (accessToken) {
       sendMessage(accessToken);
     } else {
-      setPostStatus('Authenticating...', 'posting');
-      getAccessToken().then(function (token) {
+      // Try silent auth first (no popup)
+      setPostStatus('Connecting...', 'posting');
+      getAccessToken(true).then(function (token) {
         accessToken = token;
         sendMessage(token);
-      }).catch(function (err) {
-        setPostStatus('Auth failed: ' + (err.message || err), 'post-error');
+      }).catch(function () {
+        // Silent failed — need user to click "Load from Chat" first
+        setPostStatus('Click "Load from Chat" first to enable posting', 'post-error');
       });
     }
   }
