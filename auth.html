@@ -7,36 +7,44 @@
 <body>
   <p>Authenticating, please wait...</p>
   <script src="https://res.cdn.office.net/teams-js/2.21.0/js/MicrosoftTeams.min.js"></script>
-  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
   <script>
     (function() {
       var CLIENT_ID = 'b41bc6ad-2fef-41bc-abea-196732e74ed1';
       var TENANT_ID = 'b41b72d0-4e9f-4c26-8a69-f949f367c91d';
+      var REDIRECT_URI = 'https://vadimux.github.io/willbot/auth.html';
+      var SCOPES = 'ChatMember.Read.Chat Chat.Read';
 
-      microsoftTeams.app.initialize().then(function() {
-        var msalApp = new msal.PublicClientApplication({
-          auth: {
-            clientId: CLIENT_ID,
-            authority: 'https://login.microsoftonline.com/' + TENANT_ID,
-            redirectUri: window.location.origin + '/willbot/auth.html'
-          },
-          cache: { cacheLocation: 'localStorage' }
-        });
+      // Check if we have a token in the URL hash (returning from login)
+      var hash = window.location.hash.substring(1);
+      var params = new URLSearchParams(hash);
+      var accessToken = params.get('access_token');
+      var error = params.get('error');
 
-        return msalApp.handleRedirectPromise().then(function(response) {
-          if (response && response.accessToken) {
-            // We got the token from redirect
-            microsoftTeams.authentication.notifySuccess(response.accessToken);
-          } else {
-            // No response yet, start login
-            msalApp.acquireTokenRedirect({
-              scopes: ['ChatMember.Read.Chat', 'Chat.Read']
-            });
-          }
+      if (accessToken) {
+        // We got the token! Send it back to Teams
+        microsoftTeams.app.initialize().then(function() {
+          microsoftTeams.authentication.notifySuccess(accessToken);
         });
-      }).catch(function(err) {
-        microsoftTeams.authentication.notifyFailure(err.message || 'Auth failed');
-      });
+      } else if (error) {
+        // Auth error
+        microsoftTeams.app.initialize().then(function() {
+          microsoftTeams.authentication.notifyFailure(
+            params.get('error_description') || error
+          );
+        });
+      } else {
+        // No token yet — redirect to Microsoft login
+        var authUrl = 'https://login.microsoftonline.com/' + TENANT_ID +
+          '/oauth2/v2.0/authorize' +
+          '?client_id=' + encodeURIComponent(CLIENT_ID) +
+          '&response_type=token' +
+          '&redirect_uri=' + encodeURIComponent(REDIRECT_URI) +
+          '&scope=' + encodeURIComponent(SCOPES) +
+          '&response_mode=fragment' +
+          '&prompt=consent';
+
+        window.location.href = authUrl;
+      }
     })();
   </script>
 </body>
