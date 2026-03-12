@@ -188,6 +188,37 @@ header h1 {
   color: white;
 }
 
+.btn-load {
+  width: 100%;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: #1a1a2e;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border-radius: 10px;
+}
+
+.btn-load:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.load-status {
+  font-size: 0.8rem;
+  color: #8888aa;
+  margin-bottom: 8px;
+  min-height: 1.2em;
+}
+
+.load-status.error {
+  color: #f5576c;
+}
+
+.load-status.success {
+  color: #43e97b;
+}
+
 /* Winner Overlay */
 .winner-overlay {
   position: fixed;

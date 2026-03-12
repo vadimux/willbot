@@ -24,6 +24,8 @@
 
       <div class="names-section">
         <h2>Participants</h2>
+        <button id="loadChatBtn" class="btn btn-load">Load from Chat</button>
+        <p id="loadStatus" class="load-status"></p>
         <textarea id="namesInput" placeholder="Enter names, one per line&#10;e.g.&#10;Alice&#10;Bob&#10;Charlie"></textarea>
         <div class="names-actions">
           <button id="updateBtn" class="btn btn-primary">Update Wheel</button>
@@ -46,6 +48,7 @@
   </div>
 
   <script src="https://res.cdn.office.net/teams-js/2.21.0/js/MicrosoftTeams.min.js"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

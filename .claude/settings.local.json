@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"from PIL import Image; print\\(''pillow available''\\)\")",
+      "Bash(python3:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(brew install:*)",
+      "Bash(zip willbot-teams.zip manifest.json color.png outline.png)",
+      "WebFetch(domain:vadimux.github.io)",
+      "Bash(zip -f willbot-teams.zip manifest.json color.png outline.png)"
+    ]
+  }
+}

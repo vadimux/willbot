@@ -1,13 +1,22 @@
 (function () {
   'use strict';
 
+  // --- Azure AD / MSAL Config ---
+  var CLIENT_ID = 'b41bc6ad-2fef-41bc-abea-196732e74ed1';
+  var TENANT_ID = 'b41b72d0-4e9f-4c26-8a69-f949f367c91d';
+  var AUTHORITY = 'https://login.microsoftonline.com/' + TENANT_ID;
+  var GRAPH_SCOPES = ['ChatMember.Read.Chat', 'Chat.Read'];
+
+  var msalInstance = null;
+  var teamsContext = null;
+
   // --- State ---
-  let names = [];
-  let spinning = false;
-  let currentAngle = 0;
+  var names = [];
+  var spinning = false;
+  var currentAngle = 0;
 
   // --- Color palette ---
-  const COLORS = [
+  var COLORS = [
     '#667eea', '#764ba2', '#f093fb', '#f5576c',
     '#4facfe', '#00f2fe', '#43e97b', '#fa709a',
     '#fee140', '#ff9a9e', '#a18cd1', '#fbc2eb',
@@ -16,17 +25,40 @@
   ];
 
   // --- DOM refs ---
-  const canvas = document.getElementById('wheelCanvas');
-  const ctx = canvas.getContext('2d');
-  const spinBtn = document.getElementById('spinBtn');
-  const namesInput = document.getElementById('namesInput');
-  const updateBtn = document.getElementById('updateBtn');
-  const shuffleBtn = document.getElementById('shuffleBtn');
-  const clearBtn = document.getElementById('clearBtn');
-  const winnerOverlay = document.getElementById('winnerOverlay');
-  const winnerNameEl = document.getElementById('winnerName');
-  const closeWinnerBtn = document.getElementById('closeWinner');
-  const confettiContainer = document.getElementById('confetti');
+  var canvas = document.getElementById('wheelCanvas');
+  var ctx = canvas.getContext('2d');
+  var spinBtn = document.getElementById('spinBtn');
+  var namesInput = document.getElementById('namesInput');
+  var updateBtn = document.getElementById('updateBtn');
+  var shuffleBtn = document.getElementById('shuffleBtn');
+  var clearBtn = document.getElementById('clearBtn');
+  var winnerOverlay = document.getElementById('winnerOverlay');
+  var winnerNameEl = document.getElementById('winnerName');
+  var closeWinnerBtn = document.getElementById('closeWinner');
+  var confettiContainer = document.getElementById('confetti');
+  var loadChatBtn = document.getElementById('loadChatBtn');
+  var loadStatus = document.getElementById('loadStatus');
+
+  // --- MSAL Init ---
+  function initMsal() {
+    try {
+      if (window.msal) {
+        msalInstance = new msal.PublicClientApplication({
+          auth: {
+            clientId: CLIENT_ID,
+            authority: AUTHORITY,
+            redirectUri: window.location.origin + window.location.pathname
+          },
+          cache: {
+            cacheLocation: 'sessionStorage',
+            storeAuthStateInCookie: true
+          }
+        });
+      }
+    } catch (e) {
+      console.log('MSAL init failed:', e);
+    }
+  }
 
   // --- Teams SDK init ---
   function initTeams() {
@@ -34,6 +66,8 @@
       if (window.microsoftTeams) {
         microsoftTeams.app.initialize().then(function () {
           microsoftTeams.app.getContext().then(function (context) {
+            teamsContext = context;
+
             if (context.app.theme === 'dark') {
               document.body.classList.add('theme-dark');
             }
@@ -57,6 +91,130 @@
     } catch (e) {
       // Running outside Teams — that's fine
     }
+  }
+
+  // --- Graph API: Fetch chat members ---
+  function getAccessToken() {
+    if (!msalInstance) {
+      return Promise.reject(new Error('MSAL not initialized'));
+    }
+
+    var accounts = msalInstance.getAllAccounts();
+    var request = {
+      scopes: GRAPH_SCOPES,
+      account: accounts[0] || undefined
+    };
+
+    if (accounts.length > 0) {
+      // Try silent token acquisition first
+      return msalInstance.acquireTokenSilent(request).then(function (response) {
+        return response.accessToken;
+      }).catch(function () {
+        // Silent failed, try popup
+        return acquireTokenWithPopup(request);
+      });
+    } else {
+      // No cached account, use popup
+      return acquireTokenWithPopup(request);
+    }
+  }
+
+  function acquireTokenWithPopup(request) {
+    // In Teams, use Teams auth popup; outside Teams, use MSAL popup
+    if (window.microsoftTeams && teamsContext) {
+      return new Promise(function (resolve, reject) {
+        microsoftTeams.authentication.authenticate({
+          url: window.location.origin + window.location.pathname + '?auth=start',
+          width: 600,
+          height: 535
+        }).then(function (token) {
+          resolve(token);
+        }).catch(function (err) {
+          // Fallback to MSAL popup
+          msalInstance.acquireTokenPopup(request).then(function (response) {
+            resolve(response.accessToken);
+          }).catch(reject);
+        });
+      });
+    }
+
+    return msalInstance.acquireTokenPopup(request).then(function (response) {
+      return response.accessToken;
+    });
+  }
+
+  function fetchChatMembers() {
+    loadChatBtn.disabled = true;
+    loadStatus.textContent = 'Authenticating...';
+    loadStatus.className = 'load-status';
+
+    var chatId = null;
+    if (teamsContext && teamsContext.chat && teamsContext.chat.id) {
+      chatId = teamsContext.chat.id;
+    }
+
+    getAccessToken().then(function (token) {
+      if (!chatId) {
+        // No chat context — try to get user's recent chats or show message
+        loadStatus.textContent = 'No chat context. Open in a group chat tab.';
+        loadStatus.className = 'load-status error';
+        loadChatBtn.disabled = false;
+        return;
+      }
+
+      loadStatus.textContent = 'Loading members...';
+
+      return fetch('https://graph.microsoft.com/v1.0/chats/' + chatId + '/members', {
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        }
+      }).then(function (response) {
+        if (!response.ok) {
+          throw new Error('Graph API error: ' + response.status);
+        }
+        return response.json();
+      }).then(function (data) {
+        var members = data.value || [];
+        var memberNames = members
+          .map(function (m) { return m.displayName || ''; })
+          .filter(function (n) { return n.length > 0; });
+
+        if (memberNames.length === 0) {
+          loadStatus.textContent = 'No members found.';
+          loadStatus.className = 'load-status error';
+        } else {
+          namesInput.value = memberNames.join('\n');
+          updateNames();
+          loadStatus.textContent = 'Loaded ' + memberNames.length + ' members!';
+          loadStatus.className = 'load-status success';
+        }
+      });
+    }).catch(function (err) {
+      console.error('Failed to load chat members:', err);
+      loadStatus.textContent = 'Failed: ' + (err.message || 'Auth error');
+      loadStatus.className = 'load-status error';
+    }).finally(function () {
+      loadChatBtn.disabled = false;
+    });
+  }
+
+  // --- Handle auth redirect (for popup flow) ---
+  function handleAuthRedirect() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('auth') === 'start' && msalInstance) {
+      msalInstance.loginPopup({ scopes: GRAPH_SCOPES }).then(function (response) {
+        if (window.microsoftTeams) {
+          microsoftTeams.authentication.notifySuccess(response.accessToken);
+        }
+      }).catch(function (err) {
+        if (window.microsoftTeams) {
+          microsoftTeams.authentication.notifyFailure(err.message);
+        }
+      });
+      return true; // This is the auth popup page
+    }
+    return false;
   }
 
   // --- Wheel Drawing ---
@@ -260,6 +418,7 @@
   updateBtn.addEventListener('click', updateNames);
   shuffleBtn.addEventListener('click', shuffleNames);
   clearBtn.addEventListener('click', clearNames);
+  loadChatBtn.addEventListener('click', fetchChatMembers);
   closeWinnerBtn.addEventListener('click', function () {
     winnerOverlay.classList.add('hidden');
   });
@@ -272,6 +431,11 @@
   });
 
   // --- Init ---
-  initTeams();
-  drawWheel();
+  initMsal();
+
+  // Check if this is an auth popup redirect
+  if (!handleAuthRedirect()) {
+    initTeams();
+    drawWheel();
+  }
 })();
