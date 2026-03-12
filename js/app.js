@@ -285,37 +285,52 @@
 
   // --- Post message to chat ---
   function postMessageToChat(winnerName) {
-    if (!accessToken || !teamsContext || !teamsContext.chat || !teamsContext.chat.id) {
-      console.log('Skipping chat post: no token or chat context');
-      return;
-    }
-
     if (!postToChatCheckbox || !postToChatCheckbox.checked) {
       return;
     }
 
-    var chatId = teamsContext.chat.id;
-    var messageBody = {
-      body: {
-        contentType: 'html',
-        content: '<b>📖 Next meeting\'s Storyteller: ' + winnerName + '</b><br><i>Get ready to share a fun or interesting story!</i>'
-      }
-    };
+    if (!isInTeams || !teamsContext || !teamsContext.chat || !teamsContext.chat.id) {
+      console.log('Skipping chat post: not in Teams or no chat context');
+      return;
+    }
 
-    fetch('https://graph.microsoft.com/v1.0/chats/' + chatId + '/messages', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + accessToken,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(messageBody)
-    }).then(function (response) {
-      if (!response.ok) {
-        console.error('Failed to post message:', response.status);
-      }
-    }).catch(function (err) {
-      console.error('Error posting message to chat:', err);
-    });
+    var chatId = teamsContext.chat.id;
+
+    function sendMessage(token) {
+      var messageBody = {
+        body: {
+          contentType: 'html',
+          content: '<b>📖 Next meeting\'s Storyteller: ' + winnerName + '</b><br><i>Get ready to share a fun or interesting story!</i>'
+        }
+      };
+
+      fetch('https://graph.microsoft.com/v1.0/chats/' + chatId + '/messages', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(messageBody)
+      }).then(function (response) {
+        if (!response.ok) {
+          console.error('Failed to post message:', response.status);
+        }
+      }).catch(function (err) {
+        console.error('Error posting message to chat:', err);
+      });
+    }
+
+    if (accessToken) {
+      sendMessage(accessToken);
+    } else {
+      // No token yet — authenticate first, then post
+      getAccessToken().then(function (token) {
+        accessToken = token;
+        sendMessage(token);
+      }).catch(function (err) {
+        console.error('Auth failed for chat post:', err);
+      });
+    }
   }
 
   function announceWinner() {
